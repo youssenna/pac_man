@@ -17,7 +17,7 @@ class Cell:
         self.x = x
         self.y = y
         self.wall_stat = wall_stat
-        self.cell_volume = 65
+        self.cell_volume = 45
         self.x_desplacement = 420
         self.y_desplacement = 20
         self.x_pos = self.cell_volume * self.x + self.x_desplacement
@@ -226,11 +226,11 @@ class StartGame(ButtonAction):
         super().__init__(screen, color, debug_mod)
         self.customized_maze_obj: OptimazedMaze = OptimazedMaze(maze, debug_mod)
         self.maze = self.customized_maze_obj.maze
-        self.player = Player(self.screen, self.maze[6][7], 'assets/pacman_sprites/pacman', (45, 45), self.maze)
-        self.green_ghost = Ghost(self.screen, self.maze[0][1], 'assets/pacman_sprites/ghosts/green', (45, 45), self.maze)
-        self.red_ghost = Ghost(self.screen, self.maze[14][13], 'assets/pacman_sprites/ghosts/red', (45, 45), self.maze)
-        self.orange_ghost = Ghost(self.screen, self.maze[1][14], 'assets/pacman_sprites/ghosts/orange', (45, 45), self.maze)
-        self.pink_ghost = Ghost(self.screen, self.maze[14][1], 'assets/pacman_sprites/ghosts/pink', (45, 45), self.maze)
+        self.player = Player(self.screen, self.maze[6][7], 'assets/pacman_sprites/pacman', (25, 25), self.maze)
+        self.green_ghost = Ghost(self.screen, self.maze[0][1], 'assets/pacman_sprites/ghosts/green', (25, 25), self.maze)
+        self.red_ghost = Ghost(self.screen, self.maze[14][13], 'assets/pacman_sprites/ghosts/red', (25, 25), self.maze)
+        self.orange_ghost = Ghost(self.screen, self.maze[1][14], 'assets/pacman_sprites/ghosts/orange', (25, 25), self.maze)
+        self.pink_ghost = Ghost(self.screen, self.maze[14][1], 'assets/pacman_sprites/ghosts/pink', (25, 25), self.maze)
 
     def start(self, events: List[pg.Event]):
         # pg.draw.line(self.screen, 'blue', (100, 100), (100, 250), 5)
