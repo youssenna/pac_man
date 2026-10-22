@@ -86,3 +86,15 @@ Every animation folder contains preview.gif (transparent background) showing how
 look when played at 12 FPS. main_menu_preview.gif / .png (pack root) show the main menu:
 your menu background with the four animated buttons placed over the doors.
 All PNG frames have real transparent backgrounds (alpha channel).
+
+ANIMATED BACKGROUNDS  (backgrounds/)
+------------------------------------
+backgrounds/main_menu/         your menu background (Image 1) without buttons, 16 frames
+                               (pulsing PAC-MAN neon sign with a light wave, door seam light,
+                               twinkling stars, rolling floor neon, flickering pumpkins).
+                               Draw your animated buttons on top of it.
+backgrounds/maze_background/   gameplay background (Image 3), 16 frames (twinkling stars,
+                               breathing nebula, pulsing neon streaks, rolling floor lights,
+                               chasing horizon lights). Draw the maze on top.
+Frames are 1280 x 960 (4:3), opaque, 12 FPS, seamless loop; scale to your window with
+pygame.transform.smoothscale. Each folder has preview.gif.

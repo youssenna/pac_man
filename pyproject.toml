@@ -6,9 +6,17 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "flake8>=7.3.0",
+    "mazegenerator",
     "mypy>=2.3.1",
     "pdbpp>=0.12.1",
     "pygame-ce>=2.5.8",
     "pygame-widgets>=1.3.2",
     "rich>=15.0.0",
 ]
+
+[package]
+name = "mazegenerator"
+version = "1"
+
+[tool.uv.sources]
+mazegenerator = { path = "./mazegenerator-00001-py3-none-any.whl" }

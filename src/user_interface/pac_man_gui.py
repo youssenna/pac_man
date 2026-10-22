@@ -1,6 +1,7 @@
 import pygame as pg
 import pygame_widgets
 import glob
+import pygame
 from pygame_widgets.button import Button
 # from pygame_widgets.animations import Resize
 # from moviepy.editor import VideoFileClip
@@ -10,16 +11,59 @@ from mazegenerator import MazeGenerator
 
 from abc import ABC, abstractmethod
 
+
+        
+        
+class DrawImgsFrames:
+    def __init__(self, folder: str, screen: pg.Surface, speed: int,
+                 expected_image_size: Tuple[int, int],
+                 backround: bool = True, img_pos: Tuple[int, int] = (0, 0)):
+        self.screen = screen
+        self.speed = speed
+        self.img_h, self.img_w = expected_image_size
+        self.x, self.y = img_pos
+        self._background = backround
+        self.frames = self._load_frames(folder)
+        self.current_frame = 0
+        self.last_update = pg.time.get_ticks()
+        self.frame_rect = self.frames[self.current_frame].get_rect(topleft=(self.x, self.y))
+        self.current_img: pg.Surface = self.frames[self.current_frame]
+        
+        
+        
+    def _load_frames(self, folder_name: str):
+        return [
+            pg.transform.scale(pg.image.load(img).convert_alpha(), (self.img_h, self.img_w))
+            if not self._background else pg.transform.scale(pg.image.load(img).convert(), (self.img_h, self.img_w))
+            for img in sorted(glob.glob(folder_name + '/*.png'))
+        ]
+        
+    def _update_frame(self):
+        now = pg.time.get_ticks()
+        if now - self.last_update > self.speed:
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+            self.last_update = pg.time.get_ticks()
+        
+    def update_and_draw_frame(self):
+        self._update_frame()
+        self.current_img = self.frames[self.current_frame]
+        self.screen.blit(self.current_img, (self.x, self.y))
+        self.frame_rect = self.current_img.get_rect(topleft=(self.x, self.y))
+        
+    def update_and_draw_frame_at_pos(self, x: int, y: int):
+        self._update_frame()
+        self.screen.blit(self.frames[self.current_frame], (x, y))
+
+
  
-    
 class Cell:
     def __init__(self, x: int, y: int, wall_stat: int) -> Self:
         self.x = x
         self.y = y
         self.wall_stat = wall_stat
         self.cell_volume = 45
-        self.x_desplacement = 420
-        self.y_desplacement = 20
+        self.x_desplacement = 300
+        self.y_desplacement = 200
         self.x_pos = self.cell_volume * self.x + self.x_desplacement
         self.y_pos = self.cell_volume * self.y + self.y_desplacement
         self.top_wall_pos: Tuple[Tuple[int, int]] = self._get_top_wall_position()
@@ -79,7 +123,7 @@ class Cell:
 
 class Character(ABC):
     def __init__(self, screen: pg.Surface, cell: Cell, imgs_folder: str,
-                 image_size: Tuple[int, int], maze: List[List[Cell]],
+                 image_size: Tuple[int, int], speed: int, maze: List[List[Cell]],
                  maze_size: Tuple[int, int] = (15, 15), padding: int = 10):
         self.screen: pg.Surface = screen
         self.cell: Cell = cell
@@ -89,16 +133,13 @@ class Character(ABC):
         self.y_pos = self.cell.y_pos
         self.column, self.raw = maze_size
         self.padding: int = padding
-        self.animation: Dict[str, List[pg.Surface]] = {
-            'up': self._get_imgs_frames(imgs_folder + '/up', image_size),
-            'right': self._get_imgs_frames(imgs_folder + '/right', image_size),
-            'down': self._get_imgs_frames(imgs_folder + '/down', image_size),
-            'left': self._get_imgs_frames(imgs_folder + '/left', image_size)
+        self.frames: Dict[str, DrawImgsFrames] = {
+            'up': DrawImgsFrames(imgs_folder + '/up', screen, speed, image_size, False, (self.x_pos + padding, self.y_pos + padding)),
+            'right': DrawImgsFrames(imgs_folder + '/right', screen, speed, image_size, False, (self.x_pos + padding, self.y_pos + padding)),
+            'down': DrawImgsFrames(imgs_folder + '/down', screen, speed, image_size, False, (self.x_pos + padding, self.y_pos + padding)),
+            'left': DrawImgsFrames(imgs_folder + '/left', screen, speed, image_size, False, (self.x_pos + padding, self.y_pos + padding))
         }
         self.direction: str = self._get_direction(cell)
-        self.current_frame: int = 0
-        self.speed: int = 75
-        self.last_update = pg.time.get_ticks()
     
     def _get_direction(self, cell: Cell) -> str:
         if not cell.top_wall():
@@ -111,25 +152,10 @@ class Character(ABC):
             return 'down'
         return 'right'
     
-    def _get_imgs_frames(self, imgs_folder: str, image_size) -> List[pg.Surface]:
-        frames: List[pg.Surface] = []
-        
-        for img in glob.glob(imgs_folder + '/*.png'):
-            img = pg.transform.scale(pg.image.load(img), image_size)
-            frames.append(img)
-        return frames
-    
-    def update_frame(self):
-        now = pg.time.get_ticks()
-        
-        if now - self.last_update >= self.speed:
-            self.current_frame = (self.current_frame + 1) % len(self.animation[self.direction])
-            self.last_update = pg.time.get_ticks()
     
     
     def draw_frame(self):
-        self.update_frame()
-        self.screen.blit(self.animation[self.direction][self.current_frame], (self.x_pos + self.padding, self.y_pos + self.padding))
+        self.frames[self.direction].update_and_draw_frame_at_pos(self.x_pos + self.padding, self.y_pos + self.padding)
     
     def move_up(self):
         if self.y > 0:
@@ -166,134 +192,179 @@ class Ghost(Character):
         self.draw_frame()
 
 class Player(Character):
-    def __init__(self, screen, cell, imgs_folder, image_size, maze, maze_size = (15, 15), padding = 10):
-        super().__init__(screen, cell, imgs_folder, image_size, maze, maze_size, padding)
-        self.draw_frame()
+    def __init__(self, screen, cell, imgs_folder, image_size, speed: int, maze, maze_size = (15, 15), padding = 10):
+        super().__init__(screen, cell, imgs_folder, image_size, speed, maze, maze_size, padding)
+        self.frames[self.direction].update_and_draw_frame()
         
     def move(self, events: List[pg.Event]):
-        for event in events:
-            if event.type == pg.KEYDOWN:
-                if event.key in (pg.K_DOWN, pg.K_s) and not self.cell.buttom_wall():
-                    self.direction = 'down'
-                    self.move_down()
-                elif event.key in (pg.K_UP, pg.K_w) and not self.cell.top_wall():
-                    self.direction = 'up'
-                    self.move_up()
-                elif event.key in (pg.K_RIGHT, pg.K_d) and not self.cell.right_wall():
-                    self.direction = 'right'
-                    self.move_right()
-                elif event.key in (pg.K_LEFT, pg.K_a) and not self.cell.left_wall():
-                    self.direction = 'left'
-                    self.move_left()
+        keys = pg.key.get_pressed()
+        print(self.direction)
+        if any([keys[pg.K_DOWN], keys[pg.K_s]]) and not self.cell.buttom_wall():
+            self.direction = 'down'
+            self.move_down()
+        elif any([keys[pg.K_UP], keys[pg.K_w]]) and not self.cell.top_wall():
+            self.direction = 'up'
+            self.move_up()
+        elif any([keys[pg.K_RIGHT], keys[pg.K_d]]) and not self.cell.right_wall():
+            self.direction = 'right'
+            self.move_right()
+        elif any([keys[pg.K_LEFT], keys[pg.K_a]]) and not self.cell.left_wall():
+            self.direction = 'left'
+            self.move_left()
         self.draw_frame()
 
 class ButtonAction(ABC):
-    def __init__(self, screen: pg.Surface, color: str, debug_mod: bool):
+    def __init__(self, screen: pg.Surface, fram_obj: DrawImgsFrames):
         self.screen: pg.Surface = screen
-        self.color: str = color
-        self.set_background_color()
-        self.debug = debug_mod
+        self.background: DrawImgsFrames = fram_obj
         
-    def set_background_color(self):
-        self.screen.fill(self.color)
+    def set_background(self):
+        self.background.update_and_draw_frame()
    
     @abstractmethod
     def run(self, events: List[pg.Event]):
         pass
     
 class OptimazedMaze:
-    def __init__(self, maze: MazeGenerator, debug_mod: bool = False):
-        self.maze: List[List[Cell]] = self._get_customized_maze(maze, debug_mod)
+    def __init__(self, maze: MazeGenerator):
+        self.maze: List[List[Cell]] = self._get_customized_maze(maze)
         
-    def _get_customized_maze(self, maze: List[List[int]], debug: bool = False):
+    def _get_customized_maze(self, maze: List[List[int]]):
         customed_maze = []
         
-        if debug:
-            print('#'*20, 'debug customized_maze', '#'*20)
+
         for y_index, col in enumerate(maze):
             maze_raw = []
             for x_index, raw in enumerate(col):
                 maze_raw.append(Cell(x_index, y_index, raw))
             customed_maze.append(maze_raw)
-            if debug:
-                print(maze_raw)
+
         return customed_maze
         
-
+class Pallet:
+    def __init__(self, screen: pg.Surface, cell: Cell, folder_name: str, img_size: Tuple[int, int], speed: int, maze: List[List[Cell]], padding: int = 10):
+        self.screen: pg.Surface = screen
+        self.cell: Cell = cell
+        self.maze: List[List[Cell]] = maze
+        self.padding: int = padding
+        self.pallets_frames = DrawImgsFrames(folder_name, screen, speed, img_size, False, (cell.x_pos + padding, cell.y_pos + padding))
+        
+    def draw_pallet(self, x: int, y: int):
+        x_pos = self.maze[y][x].x_pos + self.padding
+        y_pos = self.maze[y][x].y_pos + self.padding
+        self.pallets_frames.update_and_draw_frame_at_pos(x_pos, y_pos)
+        
 class StartGame(ButtonAction):
     
-    def __init__(self, screen, color, debug_mod, maze: MazeGenerator):
-        super().__init__(screen, color, debug_mod)
-        self.customized_maze_obj: OptimazedMaze = OptimazedMaze(maze, debug_mod)
+    def __init__(self, screen, background, maze: List[List[int]]):
+        super().__init__(screen, background)
+        self.expected_img_size: Tuple[int, int] = (40, 40)
+        self.animation_speed = 100
+        self.customized_maze_obj: OptimazedMaze = OptimazedMaze(maze)
         self.maze = self.customized_maze_obj.maze
-        self.player = Player(self.screen, self.maze[6][7], 'assets/pacman_sprites/pacman', (25, 25), self.maze)
-        self.green_ghost = Ghost(self.screen, self.maze[0][1], 'assets/pacman_sprites/ghosts/green', (25, 25), self.maze)
-        self.red_ghost = Ghost(self.screen, self.maze[14][13], 'assets/pacman_sprites/ghosts/red', (25, 25), self.maze)
-        self.orange_ghost = Ghost(self.screen, self.maze[1][14], 'assets/pacman_sprites/ghosts/orange', (25, 25), self.maze)
-        self.pink_ghost = Ghost(self.screen, self.maze[14][1], 'assets/pacman_sprites/ghosts/pink', (25, 25), self.maze)
-
+        self.player = Player(screen, self.maze[10][10], 'assets/pacman_sprites/pacman', (30, 30), 20, self.maze, padding=7)
+        self.green = Ghost(screen, self.maze[0][1], 'assets/pacman_sprites/ghosts/green', (30, 30), 20, self.maze, padding=7)
+        self.red = Ghost(screen, self.maze[0][13], 'assets/pacman_sprites/ghosts/red', (30, 30), 20, self.maze, padding=7)
+        self.orange = Ghost(screen, self.maze[13][0], 'assets/pacman_sprites/ghosts/orange', (30, 30), 20, self.maze, padding=7)
+        self.pink = Ghost(screen, self.maze[13][13], 'assets/pacman_sprites/ghosts/pink', (30, 30), 20, self.maze, padding=7)
+        self.super_pallet = Pallet(screen, self.maze[0][0], 'assets/pacman_sprites/pellets/super_pallet', (30, 30), 500, self.maze, padding=7)
+        
+    def _get_top_left_frames(self):
+        return {
+            'corner': DrawImgsFrames('assets/maze/walls/corners/wall_top_left_corner',
+                                     self.screen, self.animation_speed,
+                                     self.expected_img_size, True),
+            'end_left': DrawImgsFrames('assets/maze/walls/ends/wall_end_left',
+                                     self.screen, self.animation_speed,
+                                     self.expected_img_size, True)
+        }
+        
+    def _get_cornes_frames(self) -> Dict[str, DrawImgsFrames]:
+        return {
+            'bottom_left': DrawImgsFrames(
+                'assets/sci_fi_game_assets/maze/walls/corners/wall_bottom_left_corner',
+                self.screen, 150, self.expected_img_size, False),
+            'bottom_right': DrawImgsFrames(
+                'assets/sci_fi_game_assets/maze/walls/corners/wall_bottom_right_corner',
+                self.screen, 150, self.expected_img_size, False),
+            'top_left': DrawImgsFrames(
+                'assets/sci_fi_game_assets/maze/walls/corners/wall_top_left_corner',
+                self.screen, 150, self.expected_img_size, False),
+            'top_right': DrawImgsFrames(
+                'assets/sci_fi_game_assets/maze/walls/corners/wall_top_right_corner',
+                self.screen, 150, self.expected_img_size, False),
+        }      
     def start(self, events: List[pg.Event]):
-        # pg.draw.line(self.screen, 'blue', (100, 100), (100, 250), 5)
-        # pg.draw.line(self.screen, 'blue', (100, 100), (250, 100), 5)
-        # pg.draw.line(self.screen, 'blue', (100, 250), (250, 250), 5)
-        # pg.draw.line(self.screen, 'blue', (250, 100), (250, 250), 5)
-        # pg.draw.line(self.screen, 'orange', (105, 105), (105, 245), 5)
-        # pg.draw.line(self.screen, 'orange', (105, 105), (245, 105), 5)
-        # pg.draw.line(self.screen, 'orange', (105, 245), (245, 245), 5)
-        # pg.draw.line(self.screen, 'orange', (245, 105), (245, 245), 5)
-        # pg.draw.line(self.screen, 'blue', (110, 110), (110, 240), 5)
-        # pg.draw.line(self.screen, 'blue', (110, 110), (240, 110), 5)
-        # pg.draw.line(self.screen, 'blue', (110, 240), (240, 240), 5)
-        # pg.draw.line(self.screen, 'blue', (240, 110), (240, 240), 5)
-        # backround = pg.image.load("assets/background.png").convert()
-        # backround = pg.transform.scale(backround, self.screen.get_size())
-        # self.screen.blit(backround)
+        self.set_background()
+        self.draw_maze_background()
         self.draw_maze()
+        
         self.player.move(events)
-        self.green_ghost.move()
-        self.red_ghost.move()
-        self.pink_ghost.move()
-        self.orange_ghost.move()
-         
+        self.pink.move()
+        self.red.move()
+        self.orange.move()
+        self.green.move()
+        self.super_pallet.draw_pallet(0, 0)
+        self.super_pallet.draw_pallet(0, 14)
+        self.super_pallet.draw_pallet(14, 0)
+        self.super_pallet.draw_pallet(14, 14)
+        
+        
+    def draw_maze_background(self):
+        pg.draw.rect(self.screen, (10, 4, 87), pg.Rect(self.maze[0][0].x_pos, self.maze[0][0].y_pos, self.maze[0][0].cell_volume * 15, self.maze[0][0].cell_volume * 15))
+
     def draw_maze(self):
-        walls_out_color = (228, 87, 89)
-        walls_in_color = (249, 248, 113)
+        walls_out_color = (0, 200, 255, 60)
+        closed_cell_color = (20, 40, 160)
         for raw in self.maze:
             for cell in raw:
+                if (cell.top_wall() and cell.buttom_wall() and cell.right_wall() and cell.left_wall()):
+                    pg.draw.rect(self.screen, closed_cell_color, pg.Rect(cell.x_pos, cell.y_pos, cell.cell_volume, cell.cell_volume))
                 if cell.top_wall():
                     s, e = cell.top_wall_pos
                     s_x, s_y  = s
                     e_x, e_y = e
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x + 15, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x + 30, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y), 5)
                     pg.draw.line(self.screen, walls_out_color, (s_x, s_y), (e_x, e_y), 5)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 4)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 5)
                 if cell.buttom_wall():
                     
                     s, e = cell.buttom_wall_pos
                     s_x, s_y  = s
                     e_x, e_y = e
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x + 15, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x + 30, s_y), 5, 4)
+                    
                     pg.draw.line(self.screen, walls_out_color, (s_x, s_y), (e_x, e_y), 5)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 4)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 5)
                 if cell.right_wall():
                     s, e = cell.right_wall_pos
                     s_x, s_y  = s
                     e_x, e_y = e
-                    pg.draw.line(self.screen, walls_out_color, (s_x, s_y), (e_x, e_y), 5)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y + 15), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y + 30), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y + 45), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y + 30), 5)
+                    pg.draw.line(self.screen, walls_out_color, (s_x, s_y), (e_x, e_y), 4)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 5)
                 if cell.left_wall():
                     s, e = cell.left_wall_pos
                     s_x, s_y  = s
                     e_x, e_y = e
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y + 15), 5, 4)
+                    # pygame.draw.circle(self.screen, walls_out_color, (s_x, s_y + 30), 5, 4)
                     pg.draw.line(self.screen, walls_out_color, (s_x, s_y), (e_x, e_y), 5)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
-                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 2)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 4)
+                    # pg.draw.line(self.screen, walls_in_color, (s_x, s_y), (e_x, e_y), 5)
         
-        if self.debug:
-            print('#'*20, 'original maze', '#'*20,)
-            print(self.maze)
-        # exit()
         
         
     
@@ -301,124 +372,163 @@ class StartGame(ButtonAction):
         self.start(events)
     
 class Heighscores(ButtonAction):
-    def show_heighscores(self):
+    def show_heighscores(self, events: List[pg.Event]):
         print('show heighscores.')
         
-    def run(self):
-        self.show_heighscores()
+    def run(self, events: List[pg.Event]):
+        self.show_heighscores(events)
     
 class Instractions(ButtonAction):
-    def show_instractions(self):
+    def show_instractions(self, events: List[pg.Event]):
         print('show instractions.')
 
-    def run(self):
-        self.show_instractions()
+    def run(self, events: List[pg.Event]):
+        self.show_instractions(events)
     
 class Exit(ButtonAction):
-    def exit_game(self):
+    def exit_game(self, events: List[pg.Event]):
         print('exit game.')
     
-    def run(self):
-        self.exit_game()
+    def run(self, events: List[pg.Event]):
+        self.exit_game(events)
 
-class GameMenu:
-    def __init__(self, screen: pg.Surface, screen_size: Tuple[int],
-                 button_imgs: Dict[str, str], screen_center: Tuple[int, int],
-                 maze: MazeGenerator, debug_mod: bool = False) -> Self:
-        self._screen: pg.Surface = screen
-        self._screen_center: Tuple[int, int] = screen_center
-        self._screen_w, self.screen_h = screen_size
-        self._background: pg.Surface = self._load_background(button_imgs)
-        self._button_imgs: Dict[str, pg.Surface] = self._load_button_imgs(button_imgs)
-        self._button_imgs_w, self._button_imgs_h = self._get_button_imgs_size()
         
-        self._start_game_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] - self.screen_h / 3)
-        self._heighscores_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] - self.screen_h / 7)
-        self._instrcuction_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] + self.screen_h / 30)
-        self._exit_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] + self.screen_h / 5)
-        self.start_game: StartGame = StartGame(self._screen, (130, 17, 109), debug_mod, maze)
-        self.heighscores: Heighscores = Heighscores(self._screen, 'green', debug_mod)
-        self.instraction = Instractions(self._screen, 'gray', debug_mod)
-        self.exit = Exit(self._screen, 'red', debug_mod)
-        self.buttons: List[Button] = []
-        self.buttons_obj: List[ButtonAction] = []
+# class GameMenuScreen:
+#     def __init__(self, screen, )
+
+# class GameMenu:
+#     def __init__(self, screen: pg.Surface, screen_size: Tuple[int],
+#                  button_imgs: Dict[str, str], screen_center: Tuple[int, int],
+#                  maze: MazeGenerator, debug_mod: bool = False) -> Self:
+#         self._screen: pg.Surface = screen
+#         self._screen_center: Tuple[int, int] = screen_center
+#         self._screen_w, self.screen_h = screen_size
+#         self._background: pg.Surface = self._load_background(button_imgs)
+#         self._button_imgs: Dict[str, pg.Surface] = self._load_button_imgs(button_imgs)
+#         self._button_imgs_w, self._button_imgs_h = self._get_button_imgs_size()
         
-    def _load_button_imgs(self, button_imgs_path: Dict[str, str]) -> Dict[str, pg.Surface]:
-        '''this method return dictionary of button images that's you can blit them to the screen
-        :param button_imgs_path: dictionary with name of image and it's path
-        :type button_imgs_path: Tuple[int]
-        :return: dictionary of button images that's you can blit them to the screen
-        :rtype: Dict[str, pygame.Surface]
-        '''
-        imgs: Dict[str, pg.Surface] = {}
-        for name, path in button_imgs_path.items():
-            imgs[name] = pg.image.load(path)
-        return imgs
+#         self._start_game_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] - self.screen_h / 3)
+#         self._heighscores_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] - self.screen_h / 7)
+#         self._instrcuction_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] + self.screen_h / 30)
+#         self._exit_position: Tuple[int, int] = (screen_center[0] - self._button_imgs_w // 2, screen_center[1] + self.screen_h / 5)
+#         self.start_game: StartGame = StartGame(self._screen, (130, 17, 109), debug_mod, maze)
+#         self.heighscores: Heighscores = Heighscores(self._screen, 'green', debug_mod)
+#         self.instraction = Instractions(self._screen, 'gray', debug_mod)
+#         self.exit = Exit(self._screen, 'red', debug_mod)
+#         self.buttons: List[Button] = []
+#         self.buttons_obj: List[ButtonAction] = []
+        
+#     def _load_button_imgs(self, button_imgs_path: Dict[str, str]) -> Dict[str, pg.Surface]:
+#         '''this method return dictionary of button images that's you can blit them to the screen
+#         :param button_imgs_path: dictionary with name of image and it's path
+#         :type button_imgs_path: Tuple[int]
+#         :return: dictionary of button images that's you can blit them to the screen
+#         :rtype: Dict[str, pygame.Surface]
+#         '''
+#         imgs: Dict[str, pg.Surface] = {}
+#         for name, path in button_imgs_path.items():
+#             imgs[name] = pg.image.load(path)
+#         return imgs
     
-    def button_clicked(self) -> Tuple[bool, Union[ButtonAction, None]]:
-        for b, b_obj in zip(self.buttons, self.buttons_obj):
-            if b.clicked:
-                return True, b_obj
-        return False, None
-        # return True if (b.clicked for b in self.buttons) else False
+#     def button_clicked(self) -> Tuple[bool, Union[ButtonAction, None]]:
+#         for b, b_obj in zip(self.buttons, self.buttons_obj):
+#             if b.clicked:
+#                 return True, b_obj
+#         return False, None
+#         # return True if (b.clicked for b in self.buttons) else False
         
-    def _load_background(self, menu_images: Dict[str, str]) -> pg.Surface:
-        '''this method load the background image of main menu
-        :param self: self instance of the Parser class
-        :return: image that's you can blit into pygame screen
-        :rtype: pygame.Surface
-        '''
-        background = pg.image.load(menu_images['background']).convert()
-        # let image comptiable with screen size
-        background = pg.transform.scale(background, self._screen.get_size())
-        return background
+#     def _load_background(self, menu_images: Dict[str, str]) -> pg.Surface:
+#         '''this method load the background image of main menu
+#         :param self: self instance of the Parser class
+#         :return: image that's you can blit into pygame screen
+#         :rtype: pygame.Surface
+#         '''
+#         background = pg.image.load(menu_images['background']).convert()
+#         # let image comptiable with screen size
+#         background = pg.transform.scale(background, self._screen.get_size())
+#         return background
         
-    def _get_button_imgs_size(self) -> Tuple[int]:
-        '''return the size of the button images'''
-        return self._button_imgs['start'].get_size()
+#     def _get_button_imgs_size(self) -> Tuple[int]:
+#         '''return the size of the button images'''
+#         return self._button_imgs['start'].get_size()
     
-    def _creat_buttons(self, x: int, y: int, width: int, height: int, img: pg.Surface) -> Button:
-        return Button(self._screen, x, y, width, height, image=img)
+#     def _creat_buttons(self, x: int, y: int, width: int, height: int, img: pg.Surface) -> Button:
+#         return Button(self._screen, x, y, width, height, image=img)
      
-    def hide_buttons(self) -> None:
-        for but in self.buttons:
-            but.hide()
+#     def hide_buttons(self) -> None:
+#         for but in self.buttons:
+#             but.hide()
         
     
-    def create_menu_screen(self) -> None:
-        self._screen.blit(self._background)
-        self.start_button: Button = self._creat_buttons(self._start_game_position[0],
-                                                      self._start_game_position[1],
-                                                      self._button_imgs_w,
-                                                      self._button_imgs_h,
-                                                      self._button_imgs['start'])
-        self.scores_button: Button = self._creat_buttons(self._heighscores_position[0],
-                                                      self._heighscores_position[1],
-                                                      self._button_imgs_w,
-                                                      self._button_imgs_h,
-                                                      self._button_imgs['scores'])
-        self.instraction_button: Button = self._creat_buttons(self._instrcuction_position[0],
-                                                      self._instrcuction_position[1],
-                                                      self._button_imgs_w,
-                                                      self._button_imgs_h,
-                                                      self._button_imgs['instructions'])
-        self.exit_button: Button = self._creat_buttons(self._exit_position[0],
-                                                      self._exit_position[1],
-                                                      self._button_imgs_w,
-                                                      self._button_imgs_h,
-                                                      self._button_imgs['exit'])
+#     def create_menu_screen(self) -> None:
+#         self._screen.blit(self._background)
+#         self.start_button: Button = self._creat_buttons(self._start_game_position[0],
+#                                                       self._start_game_position[1],
+#                                                       self._button_imgs_w,
+#                                                       self._button_imgs_h,
+#                                                       self._button_imgs['start'])
+#         self.scores_button: Button = self._creat_buttons(self._heighscores_position[0],
+#                                                       self._heighscores_position[1],
+#                                                       self._button_imgs_w,
+#                                                       self._button_imgs_h,
+#                                                       self._button_imgs['scores'])
+#         self.instraction_button: Button = self._creat_buttons(self._instrcuction_position[0],
+#                                                       self._instrcuction_position[1],
+#                                                       self._button_imgs_w,
+#                                                       self._button_imgs_h,
+#                                                       self._button_imgs['instructions'])
+#         self.exit_button: Button = self._creat_buttons(self._exit_position[0],
+#                                                       self._exit_position[1],
+#                                                       self._button_imgs_w,
+#                                                       self._button_imgs_h,
+#                                                       self._button_imgs['exit'])
 
-        self.buttons.extend([self.start_button, self.scores_button,
-                        self.instraction_button, self.exit_button])
-        self.buttons_obj.extend([self.start_game, self.heighscores, self.instraction, self.exit])
+#         self.buttons.extend([self.start_button, self.scores_button,
+#                         self.instraction_button, self.exit_button])
+#         self.buttons_obj.extend([self.start_game, self.heighscores, self.instraction, self.exit])
     
 
 
-        
+ 
+    
+       
+class GameMenu:
+    def __init__(self, screen: pg.Surface, tools: Dict[str, DrawImgsFrames], actions: Dict[str, ButtonAction]):
+        self._screen = screen
+        self._tools = tools
+        self.actions = actions
+        self.button_clicked: bool = False
         
         
     
+    def _render_background(self):
+        self._tools['menu_background'].update_and_draw_frame()
         
+    def _handel_mouse_event(self, events: List[pg.Event], img_rect, action: ButtonAction):
+        for event in events:
+            if event.type == pg.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    if img_rect.collidepoint(event.pos):
+                        self.action: ButtonAction = action
+                        self.button_clicked = True
+    
+    def _create_buttons(self, events: List[pg.Event]):
+        self._tools['start_game'].update_and_draw_frame()
+        self._tools['instructions'].update_and_draw_frame()
+        self._tools['high_scores'].update_and_draw_frame()
+        self._tools['exit'].update_and_draw_frame()
+        self._handel_mouse_event(events, self._tools['start_game'].frame_rect, self.actions['start_game'])
+        self._handel_mouse_event(events, self._tools['instructions'].frame_rect, self.actions['instructions'])
+        self._handel_mouse_event(events, self._tools['high_scores'].frame_rect, self.actions['high_scores'])
+        self._handel_mouse_event(events, self._tools['exit'].frame_rect, self.actions['exit'])
+    
+    def create_menu_screen(self, events: List[pg.Event], clicked):
+        if not clicked:
+            self._render_background()
+            self._create_buttons(events)
+        else:
+            self.action.run(events)
+
 
 
 
@@ -426,10 +536,9 @@ class PacmanGui:
     def __init__(self, maze: List[List[int]]):
         self.maze: List[List[int]] = maze
         pg.init()
-        info: Any = pg.display.Info()
-        self.screen_w = info.current_w
-        self.screen_h = info.current_h
-        self.font1 = pg.font.SysFont(None, 15)
+        self.screen_w = 1200
+        self.screen_h = 900
+        self.font1 = pg.font.SysFont(None, 100)
         self.center: Tuple[int] = (self.screen_w / 2, self.screen_h / 2)
         self.scale = 12
         self.screen = self.creat_window()
@@ -442,38 +551,56 @@ class PacmanGui:
         pg.display.set_icon(icon_img)
         return screen
     
-
- 
-    def _get_menu_imgs(self) -> Dict[str, str]:
+        
+    def _get_imgs_tools(self, screen: pg.Surface) -> Dict[str, DrawImgsFrames]:
         return {
-            'start': 'assets/buttons/start_game.png',
-            'scores': 'assets/buttons/high_scores.png',
-            'instructions': 'assets/buttons/instructions.png',
-            'exit': 'assets/buttons/exit.png',
-            'background': 'assets/backgrounds/background1.png'
+            'menu_background': DrawImgsFrames('assets/backgrounds/main_menu', screen, 300, (self.screen_w, self.screen_h)),
+            'maze_background': DrawImgsFrames('assets/backgrounds/maze_background', screen, 200, (self.screen_w, self.screen_h)),
+            'start_game': DrawImgsFrames('assets/buttons/start_game', screen,  150, (300, 200), False, (275, 350)),
+            'instructions': DrawImgsFrames('assets/buttons/instructions', screen, 150, (300, 200), False, (625, 350)),
+            'high_scores': DrawImgsFrames('assets/buttons/high_scores', screen, 150, (300, 200), False, (275, 525)),
+            'exit': DrawImgsFrames('assets/buttons/exit', screen, 150, (300, 200), False, (625, 525)),
+            # 'back': DrawImgsFrames('assets/buttons/back', screen, 150, (150, 70), False, (,)),
+            # 'new_game': DrawImgsFrames('assets/buttons/new_game', screen, 150, (150, 70), False, (,)),
+            # 'pause': DrawImgsFrames('assets/buttons/pause', screen, 150, (150, 70), False, (,)),
+            # 'resume': DrawImgsFrames('assets/buttons/resume', screen, 150, (150, 70), False, (,)),
         }
         
+    def _welcome_message(self, screen):
+        screen.fill('yellow')
+        text = self.font1.render("welcome back", True, "white", 2)
+        screen.blit(text, (400, 400))
+        pg.display.update()
+        
+    def _get_buttons_action(self, tools: Dict[str, DrawImgsFrames]):
+        return {
+            'start_game': StartGame(self.screen, tools['maze_background'], self.maze),
+            'instructions': Instractions(self.screen, tools['maze_background']),
+            'high_scores': Heighscores(self.screen, tools['maze_background']),
+            'exit': Exit(self.screen, tools['maze_background']),
+        }    
+
     def run(self):
         screen = self.screen
-        menu_button: Dict[str, str] = self._get_menu_imgs()
-        game_menu = GameMenu(screen, screen.get_size(), menu_button, self.center, self.maze)
-        game_menu.create_menu_screen()
+        self._welcome_message(screen)
+        clock = pg.Clock()
+        frames_tool = self._get_imgs_tools(screen)
+        actions: Dict[str, ButtonAction] = self._get_buttons_action(frames_tool)
+        menu = GameMenu(screen, frames_tool, actions)
 
         run_game = True
+        button_clicked = False
         while run_game:
             events = pg.event.get()
             
 
-            pygame_widgets.update(events)
-            clicked, obj_action = game_menu.button_clicked()
-            if clicked:
-                game_menu.hide_buttons()
-                obj_action.set_background_color()
-                obj_action.run(events)
-
             for event in events:
                 if event.type == pg.QUIT:
                     run_game = False
+            menu.create_menu_screen(events, button_clicked)
+            if menu.button_clicked:
+                button_clicked = True
             pg.display.update()
+            clock.tick(10)
         pg.quit()
     
