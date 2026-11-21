@@ -27,6 +27,7 @@ class Config:
     levels: list[LevelConfig] = field(default_factory=default_levels)
 
 
+
 def read_config_file(path: str) -> str:
     with open(path, "r") as f:
         return f.read()
@@ -141,26 +142,27 @@ def build_config(data: dict) -> Config:
     )
 
 
-def load_config(path: str) -> Config:
-    try:
-        text = read_config_file(path)
-    except FileNotFoundError:
-        print("File not found.")
-        return Config()
-    except OSError:
-        print("File access error.")
-        return Config()
+class LoadConfig:
+    def load_config(self, path: str) -> Config:
+        try:
+            text = read_config_file(path)
+        except FileNotFoundError:
+            print("File not found.")
+            return Config()
+        except OSError:
+            print("File access error.")
+            return Config()
 
-    clean_text = remove_comments(text)
+        clean_text = remove_comments(text)
 
-    try:
-        data = json.loads(clean_text)
-    except json.JSONDecodeError:
-        print("Invalid JSon.")
-        return Config()
+        try:
+            data = json.loads(clean_text)
+        except json.JSONDecodeError:
+            print("Invalid JSon.")
+            return Config()
 
-    if not isinstance(data, dict):
-        print("Invalid configuration format.")
-        return Config()
+        if not isinstance(data, dict):
+            print("Invalid configuration format.")
+            return Config()
 
-    return build_config(data)
+        return build_config(data)

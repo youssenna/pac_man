@@ -2,9 +2,9 @@ from backend.parsing import Config, LevelConfig
 from typing import Tuple, Self, List
 
 class GameInfo:
-    def __init__(self, config: Config, screen_size: Tuple[int, int]) -> Self:
+    def __init__(self, config: Config, screen_size: Tuple[int, int]) -> None:
         self.conf: Config = config
-        self.screen_w, self.screen_h = screen_size
+        self.screen_w, self.screen_h = screen_size  
         # self._cell_volume = self.cell_volume
         
     # @property

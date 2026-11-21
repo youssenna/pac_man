@@ -7,18 +7,20 @@ from .game_info import GameInfo
 from .animated_png_frames import DrawImgsFrames
 from .bottons import ButtonAction, StartGame, Heighscores, Instractions, Exit
 from .game_menu import GameMenu
+from backend import GameEngine
 
 
 class PacmanGui:
-    def __init__(self, maze: List[List[int]], game_info: GameInfo) -> Self:
+    def __init__(self, maze: List[List[int]], engine: GameEngine, screen_size: Tuple[int, int]) -> None:
         self.maze: List[List[int]] = maze
-        self.game_info: GameInfo = game_info
+        self.engine: GameEngine  = engine
+        self.screen_w, self.screen_h = screen_size
         pg.init()
         self.font1 = pg.font.SysFont(None, 100)
         self.screen = self.creat_window()
         
     def creat_window(self) -> pg.Surface:
-        screen: pg.Surface = pg.display.set_mode((self.game_info.screen_w, self.game_info.screen_h))
+        screen: pg.Surface = pg.display.set_mode((self.screen_w, self.screen_h))
         pg.display.set_caption("Pac-Man yousenna && aessabri")
         icon_img = pg.image.load('assets/pacman_icon.png')
         pg.display.set_icon(icon_img)
@@ -27,11 +29,11 @@ class PacmanGui:
     def _get_imgs_tools(self, screen: pg.Surface) -> Dict[str, DrawImgsFrames]:
         return {
             # 'menu_background': DrawImgsFrames('assets/backgrounds/tst', screen, 10, (self.game_info.screen_w, self.game_info.screen_h)),
-            'maze_background': DrawImgsFrames('assets/backgrounds/maze_background', screen, 200, (self.game_info.screen_w, self.game_info.screen_h)),
+            'maze_background': DrawImgsFrames('assets/backgrounds/maze_background', screen, 200, (self.screen_w, self.screen_h)),
             'start_game': DrawImgsFrames('assets/buttons/start_game', screen,  150, (300, 200), False, (0, 0), (300, 140), 10),
-            'instructions': DrawImgsFrames('assets/buttons/instructions', screen, 150, (300, 200), False, (self.game_info.screen_w - 300, 0), (650, 140), 10),
-            'high_scores': DrawImgsFrames('assets/buttons/high_scores', screen, 150, (300, 200), False, (0, self.game_info.screen_h - 200),(300, 370), 10),
-            'exit': DrawImgsFrames('assets/buttons/exit', screen, 150, (300, 200), False, (self.game_info.screen_w - 300, self.game_info.screen_h - 200), (650, 370), 10),
+            'instructions': DrawImgsFrames('assets/buttons/instructions', screen, 150, (300, 200), False, (self.screen_w - 300, 0), (650, 140), 10),
+            'high_scores': DrawImgsFrames('assets/buttons/high_scores', screen, 150, (300, 200), False, (0, self.screen_h - 200),(300, 370), 10),
+            'exit': DrawImgsFrames('assets/buttons/exit', screen, 150, (300, 200), False, (self.screen_w - 300, self.screen_h - 200), (650, 370), 10),
             'gif_background': gif_pg.load("assets/background2.gif")
 
             # 'back': DrawImgsFrames('assets/buttons/back', screen, 150, (150, 70), False, (,)),

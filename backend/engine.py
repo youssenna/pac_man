@@ -28,6 +28,7 @@ class GameEngine:
             return
         self.player.next_direction = direction
 
+    # player
     def get_visual_position(self) -> tuple[float, float]:
         progress = min(self.move_elapsed / self.move_interval, 1.0)
         previous_x, previous_y = self.previous_position

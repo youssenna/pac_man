@@ -1,13 +1,17 @@
 
 from gui import PacmanGui, GameInfo
-from backend import load_config
+from backend import GameEngine, LoadConfig
 from mazegenerator import MazeGenerator
 
 def main():
-    conf = load_config("config.json")
-    game_info = GameInfo(conf, (1280, 720))
+    config = LoadConfig().load_config('config.json')
+    engine = GameEngine(config)
+    game_info = GameInfo(config, (1280, 720))
+    
+    
+    
     maze = MazeGenerator()
-    gui = PacmanGui(maze.maze, game_info)
+    gui = PacmanGui(maze.maze, engine, (1280, 650))
     gui.run()
 
 
