@@ -6,6 +6,7 @@ from .customed_maze import OptimazedMaze
 from .characters import Player, Ghost, Pallet
 from .game_info import GameInfo
 
+from backend import GameEngine
 import pygame as pg
 import gif_pygame as gif_pg
 
@@ -24,12 +25,16 @@ class ButtonAction(ABC):
  
 class StartGame(ButtonAction):
     
-    def __init__(self, screen, background, maze: List[List[int]]):
+    def __init__(self, screen, background, maze: List[List[int]], engine: GameEngine):
         super().__init__(screen, background)
         self.expected_img_size: Tuple[int, int] = (40, 40)
         self.animation_speed = 100
         self.customized_maze_obj: OptimazedMaze = OptimazedMaze(maze)
         self.maze = self.customized_maze_obj.maze
+        self._engine = engine
+        self.time = pg.time.get_ticks()
+        self.curr_width = 0
+        self.curr_hight = 0
         self.background__ = gif_pg.load("assets/background3.gif")
         self.player = Player(screen, self.maze[10][10], 'assets/pacman_sprites/pacman', (30, 30), 20, self.maze, padding=7)
         self.green = Ghost(screen, self.maze[0][1], 'assets/pacman_sprites/ghosts/green', (30, 30), 20, self.maze, padding=7)
@@ -81,15 +86,29 @@ class StartGame(ButtonAction):
         self.super_pallet.draw_pallet(14, 14)
         
         
+        
+        
     def draw_maze_background(self):
-        # pg.draw.rect(self.screen, (10, 4, 87), pg.Rect(self.maze[0][0].x_pos, self.maze[0][0].y_pos, self.maze[0][0].cell_volume * 15, self.maze[0][0].cell_volume * 15))
-        pg.draw.rect(self.screen, (10, 4, 87), pg.Rect(self.screen.get_size()[0] *10/100, self.screen.get_size()[1] *15/100, self.screen.get_size()[0] *80/100, self.screen.get_size()[1] * 80/100))
-
+        back_left = self.screen.get_size()[0] *10/100
+        back_top = self.screen.get_size()[1] *15/100
+        final_width = self.screen.get_size()[0] *80/100
+        final_hight = self.screen.get_size()[1] * 80/100
+        now = pg.time.get_ticks()
+        if now - self.time >=  0.5:
+            if self.curr_width < final_width:
+                self.curr_width += 70
+            if self.curr_hight < final_hight:
+                self.curr_hight += 50
+            self.time = pg.time.get_ticks()
+        pg.draw.rect(self.screen, (10, 4, 87), pg.Rect(back_left, back_top, self.curr_width, self.curr_hight), 0, 150)
+            
     def draw_maze(self):
+        cell_volume = 500 / min(self._engine.level_config.width, self._engine.level_config.height)
         walls_out_color = (0, 200, 255, 60)
         closed_cell_color = (20, 40, 160)
         for raw in self.maze:
             for cell in raw:
+                cell.cell_volume = cell_volume
                 if (cell.top_wall() and cell.buttom_wall() and cell.right_wall() and cell.left_wall()):
                     pg.draw.rect(self.screen, closed_cell_color, pg.Rect(cell.x_pos, cell.y_pos, cell.cell_volume, cell.cell_volume))
                 if not cell.top_wall() and not cell.left_wall():

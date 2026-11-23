@@ -44,7 +44,7 @@ class PacmanGui:
 
     def _get_buttons_action(self, tools: Dict[str, DrawImgsFrames]):
         return {
-            'start_game': StartGame(self.screen, tools['maze_background'], self.maze),
+            'start_game': StartGame(self.screen, tools['maze_background'], self.maze, self.engine),
             'instructions': Instractions(self.screen, tools['maze_background']),
             'high_scores': Heighscores(self.screen, tools['maze_background']),
             'exit': Exit(self.screen, tools['maze_background']),
