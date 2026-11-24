@@ -73,12 +73,12 @@ class OptimazedMaze:
     def __init__(self, maze: MazeGenerator):
         self.maze: List[List[Cell]] = self._get_customized_maze(maze)
         
-    def _get_customized_maze(self, maze: List[List[int]]):
-        customed_maze = []
+    def _get_customized_maze(self, maze: List[List[int]]) -> List[List[Cell]]:
+        customed_maze: List[List[Cell]] = []
         
 
         for y_index, col in enumerate(maze):
-            maze_raw = []
+            maze_raw: List[Cell] = []
             for x_index, raw in enumerate(col):
                 maze_raw.append(Cell(x_index, y_index, raw))
             customed_maze.append(maze_raw)

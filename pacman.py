@@ -10,8 +10,7 @@ def main():
     
     
     
-    maze = MazeGenerator()
-    gui = PacmanGui(maze.maze, engine, (1280, 650))
+    gui = PacmanGui(engine, (1280, 650))
     gui.run()
 
 

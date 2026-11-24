@@ -11,16 +11,15 @@ from backend import GameEngine
 
 
 class PacmanGui:
-    def __init__(self, maze: List[List[int]], engine: GameEngine, screen_size: Tuple[int, int]) -> None:
-        self.maze: List[List[int]] = maze
-        self.engine: GameEngine  = engine
-        self.screen_w, self.screen_h = screen_size
+    def __init__(self, engine: GameEngine, screen_size: Tuple[int, int]) -> None:
+        self._engine: GameEngine  = engine
+        self._screen_w, self._screen_h = screen_size
         pg.init()
-        self.font1 = pg.font.SysFont(None, 100)
-        self.screen = self.creat_window()
+        self._font1 = pg.font.SysFont(None, 100)
+        self._screen = self._creat_window()
         
-    def creat_window(self) -> pg.Surface:
-        screen: pg.Surface = pg.display.set_mode((self.screen_w, self.screen_h))
+    def _creat_window(self) -> pg.Surface:
+        screen: pg.Surface = pg.display.set_mode((self._screen_w, self._screen_h))
         pg.display.set_caption("Pac-Man yousenna && aessabri")
         icon_img = pg.image.load('assets/pacman_icon.png')
         pg.display.set_icon(icon_img)
@@ -28,12 +27,12 @@ class PacmanGui:
     
     def _get_imgs_tools(self, screen: pg.Surface) -> Dict[str, DrawImgsFrames]:
         return {
-            # 'menu_background': DrawImgsFrames('assets/backgrounds/tst', screen, 10, (self.game_info.screen_w, self.game_info.screen_h)),
-            'maze_background': DrawImgsFrames('assets/backgrounds/maze_background', screen, 200, (self.screen_w, self.screen_h)),
+            # 'menu_background': DrawImgsFrames('assets/backgrounds/tst', screen, 10, (self.game_info._screen_w, self.game_info._screen_h)),
+            'maze_background': DrawImgsFrames('assets/backgrounds/maze_background', screen, 200, (self._screen_w, self._screen_h)),
             'start_game': DrawImgsFrames('assets/buttons/start_game', screen,  150, (300, 200), False, (0, 0), (300, 140), 10),
-            'instructions': DrawImgsFrames('assets/buttons/instructions', screen, 150, (300, 200), False, (self.screen_w - 300, 0), (650, 140), 10),
-            'high_scores': DrawImgsFrames('assets/buttons/high_scores', screen, 150, (300, 200), False, (0, self.screen_h - 200),(300, 370), 10),
-            'exit': DrawImgsFrames('assets/buttons/exit', screen, 150, (300, 200), False, (self.screen_w - 300, self.screen_h - 200), (650, 370), 10),
+            'instructions': DrawImgsFrames('assets/buttons/instructions', screen, 150, (300, 200), False, (self._screen_w - 300, 0), (650, 140), 10),
+            'high_scores': DrawImgsFrames('assets/buttons/high_scores', screen, 150, (300, 200), False, (0, self._screen_h - 200),(300, 370), 10),
+            'exit': DrawImgsFrames('assets/buttons/exit', screen, 150, (300, 200), False, (self._screen_w - 300, self._screen_h - 200), (650, 370), 10),
             'gif_background': gif_pg.load("assets/background2.gif")
 
             # 'back': DrawImgsFrames('assets/buttons/back', screen, 150, (150, 70), False, (,)),
@@ -44,19 +43,19 @@ class PacmanGui:
 
     def _get_buttons_action(self, tools: Dict[str, DrawImgsFrames]):
         return {
-            'start_game': StartGame(self.screen, tools['maze_background'], self.maze, self.engine),
-            'instructions': Instractions(self.screen, tools['maze_background']),
-            'high_scores': Heighscores(self.screen, tools['maze_background']),
-            'exit': Exit(self.screen, tools['maze_background']),
+            'start_game': StartGame(self._screen, tools['maze_background'], self._engine),
+            'instructions': Instractions(self._screen, tools['maze_background']),
+            'high_scores': Heighscores(self._screen, tools['maze_background']),
+            'exit': Exit(self._screen, tools['maze_background']),
         }  
     def _welcome_message(self, screen):
         screen.fill('yellow')
-        text = self.font1.render("welcome back", True, "white", 2)
+        text = self._font1.render("welcome back", True, "white", 2)
         screen.blit(text, (400, 300))
         pg.display.update()
 
     def run(self):
-        screen = self.screen
+        screen = self._screen
         self._welcome_message(screen)
         clock = pg.Clock()
         frames_tool = self._get_imgs_tools(screen)
