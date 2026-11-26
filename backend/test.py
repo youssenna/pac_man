@@ -15,19 +15,19 @@ import sys
 import tempfile
 from collections import deque
 
-from characters import Blinky
-from engine import GameEngine
-from ghost_ai import decide_ghost_move
-from highscores import (
+# from .characters import Blinky
+from .engine import GameEngine
+from .ghost_ai import decide_ghost_move
+from .highscores import (
     add_highscore,
     is_highscore,
     is_valid_name,
     load_highscores,
     save_highscores,
 )
-from pacgums import scare_ghosts
-from parsing import load_config
-from pathfinding import find_path
+from .pacgums import scare_ghosts
+from .parsing import load_config
+from .pathfinding import find_path
 
 VEC = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
 DIRS = ("N", "E", "S", "W")

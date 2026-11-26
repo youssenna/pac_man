@@ -38,25 +38,32 @@ class MazeRendring:
         # start_position = 
        
 class ScreenInfo:
-    def __init__(self, screen_size: Tuple[int, int],
-                 maze_background_pos: Tuple[int, int], 
-                 maze_background_size: Tuple[int, int],
-                 menu_pos: Tuple[int, int],
-                 menu_size: Tuple[int, int]):
-        self.width, self.hight = screen_size
-        self.background_x, self.background_y = maze_background_pos
-        self.background_w, self.background_h = maze_background_size
-        self.menu_x, self.menu_y = menu_pos
-        self.menu_w, self.menu_h = menu_size
+    def __init__(self):
+        self.maze_screen = pg.Surface((840, 520))
+        self.maze_screen_pos = 64, 65
+        self.menu_screen = pg.Surface((280, 520))
+        self.menu_screen_pos = 955, 65
+        
+        self.maze_rect = pg.Rect(64, 65, 840, 520)
+        self.menu_rect = pg.Rect(955, 65, 280, 520)
+        
+    def blit_screens(self, screen: pg.Surface):
+        self.maze_screen.fill('red')
+        self.menu_screen.fill('red')
+        screen.blit(self.maze_screen, self.maze_screen_pos)
+        screen.blit(self.menu_screen, self.menu_screen_pos)
+        
+        
+        
  
 class StartGame(ButtonAction):
     
     def __init__(self, screen, background, engine: GameEngine):
         super().__init__(screen, background)
         self._engine = engine
-        self.expected_img_size: Tuple[int, int] = (40, 40)
+        self._game_screens = ScreenInfo()
         self.animation_speed = 100
-        self._screen_info = self._get_screen_info()
+        
         # self.original_maze = self._get_maze_from_mazegenerator()
         # self.customized_maze_obj: OptimazedMaze = OptimazedMaze(self.original_maze)
         # self.maze = self.customized_maze_obj.maze
@@ -73,6 +80,7 @@ class StartGame(ButtonAction):
         # self.pink = Ghost(screen, self.maze[1][3], 'assets/pacman_sprites/ghosts/pink', (30, 30), 20, self.maze, padding=7)
         # self.super_pallet = Pallet(screen, self.maze[1][0], 'assets/pacman_sprites/pellets/super_pallet', (30, 30), 500, self.maze, padding=7)
         
+            
     @staticmethod
     def _get_maze_from_mazegenerator(current_level: LevelConfig):
         maze_obj = MazeGenerator((current_level.width,
@@ -80,33 +88,10 @@ class StartGame(ButtonAction):
                                  seed=current_level.seed)
         return maze_obj.maze
     
-    def _get_top_left_frames(self):
-        return {
-            'corner': DrawImgsFrames('assets/maze/walls/corners/wall_top_left_corner',
-                                     self.screen, self.animation_speed,
-                                     self.expected_img_size, True),
-            'end_left': DrawImgsFrames('assets/maze/walls/ends/wall_end_left',
-                                     self.screen, self.animation_speed,
-                                     self.expected_img_size, True)
-        }
-        
-    def _get_cornes_frames(self) -> Dict[str, DrawImgsFrames]:
-        return {
-            'bottom_left': DrawImgsFrames(
-                'assets/sci_fi_game_assets/maze/walls/corners/wall_bottom_left_corner',
-                self.screen, 150, self.expected_img_size, False),
-            'bottom_right': DrawImgsFrames(
-                'assets/sci_fi_game_assets/maze/walls/corners/wall_bottom_right_corner',
-                self.screen, 150, self.expected_img_size, False),
-            'top_left': DrawImgsFrames(
-                'assets/sci_fi_game_assets/maze/walls/corners/wall_top_left_corner',
-                self.screen, 150, self.expected_img_size, False),
-            'top_right': DrawImgsFrames(
-                'assets/sci_fi_game_assets/maze/walls/corners/wall_top_right_corner',
-                self.screen, 150, self.expected_img_size, False),
-        }      
+    
     def start(self, events: List[pg.Event]):
         self.screen.fill((2, 1, 36))
+        self._game_screens.blit_screens(self.screen)
         # self.screen.blit(pg.transform.scale(self.background__.blit_ready(), (1280, 800)))
         
         # self.set_background()
@@ -130,66 +115,36 @@ class StartGame(ButtonAction):
         # self.super_pallet.draw_pallet(14, 14)
         
         
-    def _get_screen_info(self) -> ScreenInfo:
-        screen_w, screen_h = self.screen.get_size()
-        
-        back_left = screen_w * 5 // 100
-        back_top = screen_h * 10 // 100
-        
-        final_width = screen_w * 60 // 100
-        final_hight = screen_h * 80 // 100
-        
-        menu_x = screen_w * 75 // 100
-        menu_y = back_top
-        menu_w = screen_w * 20 // 100
-        menu_h = final_hight
-        return ScreenInfo((screen_w, screen_h),
-                          (back_left, back_top),
-                          (final_width, final_hight),
-                          (menu_x, menu_y),
-                          (menu_w, menu_h))
         
     def draw_maze_background(self):
-        back_left = self._screen_info.background_x
-        back_top = self._screen_info.background_y
-        final_width = self._screen_info.background_w
-        final_hight = self._screen_info.background_h
         
         now = pg.time.get_ticks()
         if now - self.time >= 1:
-            if self.maze_backg_curr_width < final_width:
-                self.maze_backg_curr_width += final_width // 10
-            if self.maze_backg_curr_hight < final_hight:
-                self.maze_backg_curr_hight += final_hight // 10
+            if self.maze_backg_curr_width < self._game_screens.maze_screen.get_size()[0]:
+                self.maze_backg_curr_width += 10
+            if self.maze_backg_curr_hight < self._game_screens.maze_screen.get_size()[1]:
+                self.maze_backg_curr_hight += 10
                 
-            if self.menu_backg_curr_width < self._screen_info.menu_w:
-                self.menu_backg_curr_width += self._screen_info.menu_w // 10
-            if self.menu_backg_curr_hight < self._screen_info.menu_h:
-                self.menu_backg_curr_hight += self._screen_info.menu_h // 10
+            if self.menu_backg_curr_width < self._game_screens.menu_screen.get_size()[0]:
+                self.menu_backg_curr_width += 10
+            if self.menu_backg_curr_hight < self._game_screens.menu_screen.get_size()[1]:
+                self.menu_backg_curr_hight += 10
             self.time = pg.time.get_ticks()
+        # print(final_width)
         
         pg.draw.rect(self.screen,
                      (0, 0, 70),
-                     pg.Rect(self._screen_info.menu_x,
-                             self._screen_info.menu_y,
-                             self.menu_backg_curr_width,
-                             self.menu_backg_curr_hight),
+                     self._game_screens.menu_rect,
                      0, 100)
       
         pg.draw.rect(self.screen,
                      (0, 0, 70),
-                     pg.Rect(back_left,
-                             back_top,
-                             self.maze_backg_curr_width,
-                             self.maze_backg_curr_hight),
+                     self._game_screens.maze_rect,
                      0, 150)
 
         pg.draw.rect(self.screen,
                     (110, 0, 70),
-                    pg.Rect(back_left,
-                            back_top,
-                            self.maze_backg_curr_width,
-                            self.maze_backg_curr_hight),
+                    self._game_screens.maze_rect,
                     5, 150)
 
     def draw_maze(self):
