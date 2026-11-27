@@ -50,7 +50,7 @@ class PacmanGui:
         }  
     def _welcome_message(self, screen):
         screen.fill('yellow')
-        text = self._font1.render("welcome back", True, "white", 2)
+        text = self._font1.render("welcome back", True, "white", 'red')
         screen.blit(text, (400, 300))
         pg.display.update()
 
@@ -63,18 +63,16 @@ class PacmanGui:
         menu = GameMenu(screen, frames_tool, actions)
 
         run_game = True
-        button_clicked = False
         while run_game:
+            dt = clock.tick(60) / 1000
             events = pg.event.get()
             
 
             for event in events:
                 if event.type == pg.QUIT:
                     run_game = False
-            menu.create_menu_screen(events, button_clicked)
-            if menu.button_clicked:
-                button_clicked = True
+            menu.create_menu_screen(events, dt)
+
             pg.display.update()
-            clock.tick(10)
         pg.quit()
     

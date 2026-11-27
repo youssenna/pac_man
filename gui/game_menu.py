@@ -4,7 +4,7 @@ from typing import Dict, List, Self
 import pygame as pg
 
 from .animated_png_frames import DrawImgsFrames
-from .bottons import ButtonAction
+from .bottons import ButtonAction, StartGame
 
 
 class GameMenu:
@@ -20,10 +20,10 @@ class GameMenu:
         self._tools['menu_background'].update_and_draw_frame()
         
     def _handel_mouse_event(self, events: List[pg.Event], img: DrawImgsFrames, action: ButtonAction):
-        for event in events:
-            mouse_pos = pg.mouse.get_pos()
-            img.scale = 1.3 if img.frame_rect.collidepoint(mouse_pos) else 1.0
+        mouse_pos = pg.mouse.get_pos()
+        img.scale = 1.3 if img.frame_rect.collidepoint(mouse_pos) else 1.0
                 
+        for event in events:
             if event.type == pg.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     if img.frame_rect.collidepoint(event.pos):
@@ -40,13 +40,15 @@ class GameMenu:
         self._handel_mouse_event(events, self._tools['high_scores'], self.actions['high_scores'])
         self._handel_mouse_event(events, self._tools['exit'], self.actions['exit'])
     
-    def create_menu_screen(self, events: List[pg.Event], clicked):
-        if not clicked:
+    def create_menu_screen(self, events: List[pg.Event], dt: float):
+        if not self.button_clicked:
             # self._render_background()
             # self._screen.blit(gif.blit_ready(), (0, 0))
             self._screen.blit(pg.transform.scale(self._tools['gif_background'].blit_ready(), (1280, 800)))
             # self._tools['gif_background'].render(self._screen, (0, 0))
             self._create_buttons(events)
+        elif isinstance(self.action, StartGame):
+            self.action.run(events, dt)
         else:
             self.action.run(events)
 
